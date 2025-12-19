@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+data/raw_audio/
+data/preprocessed_audio/
+data/outputs/
+__pycache__/
+.venv/
+
+
 # Distribution / packaging
 .Python
 build/
