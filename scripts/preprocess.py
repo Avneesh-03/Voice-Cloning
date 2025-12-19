@@ -16,6 +16,10 @@ def preprocess_audio(input_path, output_dir, target_sr=16000):
     # Load audio (keep original sample rate first)
     audio, sr = librosa.load(input_path, sr=None, mono=True)
 
+    # Remove leading and trailing silence
+    
+    audio, _ = librosa.effects.trim(audio, top_db=25)
+
     # Resample if required
     if sr != target_sr:
         audio = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
