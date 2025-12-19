@@ -34,11 +34,33 @@ def preprocess_audio(input_path, output_dir, target_sr=16000):
     output_path = os.path.join(output_dir, "processed.wav")
 
     # Save processed audio
-    sf.write(output_path, audio, target_sr)
+    chunk_duration = 3.0  # seconds
+    chunk_samples = int(chunk_duration * target_sr)
 
-    return output_path
+    chunks = []
+    total_samples = len(audio)
+
+    for i in range(0, total_samples, chunk_samples):
+        chunk = audio[i:i + chunk_samples]
+
+        if len(chunk) < chunk_samples * 0.5:
+            continue  # skip very short chunks
+
+        chunk_path = os.path.join(
+            output_dir,
+            f"chunk_{len(chunks)}.wav"
+        )
+
+        sf.write(chunk_path, chunk, target_sr)
+        chunks.append(chunk_path)
+
+    return chunks
+
 
 
 #It scales the audio signal so all samples have consistent loudness, which improves embedding quality and TTS stability.
 
 #We’ll do peak normalization (simple, safe, MVP-friendly).
+
+#Long audio is split into smaller chunks so speaker embeddings are more stable and robust. Each chunk captures consistent speaker characteristics.
+
