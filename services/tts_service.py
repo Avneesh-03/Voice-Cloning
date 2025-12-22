@@ -1,4 +1,5 @@
 import torch
+<<<<<<< HEAD
 from pathlib import Path
 from TTS.api import TTS
 
@@ -77,3 +78,24 @@ class TTSService:
         # outputs is a list of mels (one per sentence)
         mel = outputs[0] if outputs else None
         return mel
+=======
+from TTS.api import TTS
+
+def load_tts_model():
+    
+    device = "mps" if torch.backends.mps.available_mps() else "cpu"
+    
+    
+    model = TTS(model_name="tts_models/multilingual/multi-dataset/your_tts", progress_bar=False).to(device)
+    return model
+
+def synthesize_speech(text: str, speaker_embedding, style: str = "neutral"):
+    """Day 2 & 3: Generate speech with speaker embedding [cite: 70, 71, 111-115]"""
+    model = load_tts_model()
+    
+    # YourTTS generates audio using text and the embedding from the ECAPA service [cite: 4, 113]
+    # We use 'en' as the default language for the MVP
+    wav = model.tts(text=text, speaker_embedding=speaker_embedding, language="en")
+    
+    return wav # Returns audio waveform for Yamini's Vocoder service [cite: 116, 121]
+>>>>>>> 9277454 (feat: implement tts service with strict function signatures)
