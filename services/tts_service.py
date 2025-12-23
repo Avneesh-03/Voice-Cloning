@@ -1,29 +1,79 @@
 import torch
-import os
+from pathlib import Path
 from TTS.api import TTS
+
+from scripts.utils import ensure_dir, check_file_exists, get_path
+
 
 class TTSService:
     def __init__(self, device=None):
-        # Default to CPU for laptop stability
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        
-        # 'YourTTS' is the multi-lingual model used for zero-shot cloning
-        self.model_name = "tts_models/multilingual/multi-dataset/your_tts"
-        
-        # This will download the model (~600MB) on the first run
-        self.tts = TTS(self.model_name, progress_bar=True).to(self.device)
 
-    def synthesize(self, text, reference_wav, output_path):
+        # YourTTS zero-shot voice cloning model
+        self.model_name = "tts_models/multilingual/multi-dataset/your_tts"
+        self.tts = TTS(self.model_name).to(self.device)
+
+        # Ensure output directory exists
+        ensure_dir("data/outputs")
+
+    def synthesize_audio(
+        self,
+        text: str,
+        speaker_wav_path: str,
+        language: str = "en",
+        output_filename: str = "yourtts_output.wav"
+    ):
         """
-        Takes input text and a reference audio chunk, 
-        then generates the cloned voice audio file.
+        ✅ PRODUCTION-SAFE: Generate final audio using YourTTS.
+
+        Args:
+            text: The text to synthesize.
+            speaker_wav_path: Path to a preprocessed audio chunk of the speaker.
+            language: Language code (default "en").
+            output_filename: File name for saving cloned audio.
         """
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
+
+        if not text.strip():
+            raise ValueError("Text cannot be empty")
+
+        speaker_wav_path = Path(speaker_wav_path)
+        check_file_exists(speaker_wav_path)  # preprocessed chunk
+
+        output_path = get_path("outputs", output_filename)
+
+        # YourTTS generates audio from the reference preprocessed chunk
         self.tts.tts_to_file(
             text=text,
-            speaker_wav=reference_wav,
-            language="en",
+            speaker_wav=str(speaker_wav_path),
+            language=language,
             file_path=output_path
         )
+
         return output_path
+
+    def generate_mel_debug(
+        self,
+        text: str,
+        speaker_wav_path: str,
+        language: str = "en"
+    ):
+        """
+        ⚠ DEBUG ONLY — Returns MEL spectrogram for a preprocessed chunk.
+
+        Note:
+            - Only used for analysis, not for vocoder synthesis.
+        """
+
+        speaker_wav_path = Path(speaker_wav_path)
+        check_file_exists(speaker_wav_path)
+
+        outputs = self.tts.synthesizer.tts(
+            text=text,
+            speaker_wav=str(speaker_wav_path),
+            language_name=language,
+            return_mel=True
+        )
+
+        # outputs is a list of mels (one per sentence)
+        mel = outputs[0] if outputs else None
+        return mel

@@ -1,66 +1,76 @@
-import os
 import librosa
 import soundfile as sf
+from pathlib import Path
+
+from scripts.utils import check_file_exists, get_path
 
 
-def preprocess_audio(input_path, output_dir, target_sr=16000):
+def preprocess_audio(input_filename: str, target_sr: int = 16000):
     """
-    Basic audio preprocessing:
+    Preprocess raw audio and split into chunks for speaker embedding.
+
+    Steps:
     - Load audio
     - Convert to mono
-    - Resample to target sample rate
+    - Trim silence
+    - Normalize
+    - Resample
+    - Split into chunks
     """
 
-    os.makedirs(output_dir, exist_ok=True)
+    # Resolve input path safely (ONLY filename allowed)
+    input_path = get_path("raw", input_filename)
+    check_file_exists(input_path)
 
-    # Load audio (keep original sample rate first)
+    # Load audio (preserve original SR first)
     audio, sr = librosa.load(input_path, sr=None, mono=True)
 
-    # Remove leading and trailing silence
-    
+    if len(audio) == 0:
+        raise ValueError("Loaded audio is empty.")
+
+    # Trim silence
     audio, _ = librosa.effects.trim(audio, top_db=25)
 
+    if len(audio) == 0:
+        raise ValueError("Audio became empty after silence trimming.")
 
-    # Normalize audio to [-1, 1]
-    peak = max(abs(audio))
+    # Normalize audio
+    peak = abs(audio).max()
     if peak > 0:
         audio = audio / peak
 
-
-    # Resample if required
+    # Resample if needed
     if sr != target_sr:
         audio = librosa.resample(audio, orig_sr=sr, target_sr=target_sr)
 
-    output_path = os.path.join(output_dir, "processed.wav")
-
-    # Save processed audio
+    # Chunking
     chunk_duration = 3.0  # seconds
     chunk_samples = int(chunk_duration * target_sr)
 
     chunks = []
-    total_samples = len(audio)
 
-    for i in range(0, total_samples, chunk_samples):
-        chunk = audio[i:i + chunk_samples]
+    for i in range(0, len(audio), chunk_samples):
+        chunk = audio[i : i + chunk_samples]
 
+        # Skip very small chunks
         if len(chunk) < chunk_samples * 0.5:
-            continue  # skip very short chunks
+            continue
 
-        chunk_path = os.path.join(
-            output_dir,
-            f"chunk_{len(chunks)}.wav"
-        )
+        chunk_name = f"{input_path.stem}_chunk_{len(chunks)}.wav"
+        chunk_path = get_path("preprocessed", chunk_name)
 
         sf.write(chunk_path, chunk, target_sr)
         chunks.append(chunk_path)
 
+    if not chunks:
+        raise RuntimeError("No valid audio chunks were generated.")
+
     return chunks
 
 
-
-#It scales the audio signal so all samples have consistent loudness, which improves embedding quality and TTS stability.
-
-#We’ll do peak normalization (simple, safe, MVP-friendly).
-
-#Long audio is split into smaller chunks so speaker embeddings are more stable and robust. Each chunk captures consistent speaker characteristics.
-
+# Local test
+if __name__ == "__main__":
+    chunks = preprocess_audio("sample.wav")
+    print("Generated chunks:")
+    for c in chunks:
+        print(c)
