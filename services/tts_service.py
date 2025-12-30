@@ -1,5 +1,4 @@
 import torch
-<<<<<<< HEAD
 from pathlib import Path
 from TTS.api import TTS
 
@@ -78,7 +77,7 @@ class TTSService:
         # outputs is a list of mels (one per sentence)
         mel = outputs[0] if outputs else None
         return mel
-=======
+
 from TTS.api import TTS
 
 def load_tts_model():
@@ -98,4 +97,3 @@ def synthesize_speech(text: str, speaker_embedding, style: str = "neutral"):
     wav = model.tts(text=text, speaker_embedding=speaker_embedding, language="en")
     
     return wav # Returns audio waveform for Yamini's Vocoder service [cite: 116, 121]
->>>>>>> 9277454 (feat: implement tts service with strict function signatures)
